@@ -1,174 +1,150 @@
+"""Электронный деканат. МЖ-МИЭП, работа 1.
+Анкета студента, проверка языка и короткий тест по дипломатии.
+"""
+
 import datetime
 import random
-import re
-import time
 
-print("=" * 45)
-print("   ЭЛЕКТРОННЫЙ ДЕКАНАТ МГИМО")
-print("   Версия А · МЖ-МИЭП")
-print("=" * 45)
 
-name = input(" Введи твое имя: ")
-surname = input("   Твоя фамилия: ")
-departments = ["МО", "МЭО", "МП", "МЖ", "МИЭП", "ФУП", "ФФЭ", "ФЛМК", "МБ", "ИМТУР"]
-print("Доступные факультеты:", ", ".join(departments))
-faculty = input(" Твой факультет: ")
-birth_year = input("   Год рождения: ")
-current_year = datetime.date.today().year
-if not birth_year:
-    birth_year = current_year - 17
-else:
-    birth_year = int(birth_year)
-age = current_year - birth_year
+FACULTIES = ("МО", "МЭО", "МП", "МЖ", "МИЭП", "ФУП", "ФФЭ", "ФЛМК", "МБ", "ИМТУР")
 
-print()
-print("Проверяем данные...")
-time.sleep(1)
-print()
-print(f"Вас зовут: {name} {surname}")
-print("Факультет:", faculty)
-print("  Возраст:", age)
-
-a = random.randint(1, 4)
-b = random.randint(1, 4)
-print()
-captcha = input(f"Подтверди, что ты человек, введи сумму {a}+{b}: ")
-answer = a + b
-if int(captcha) == answer:
-    print("Капча пройдена")
-    is_human = True
-else:
-    print("Неправильный ответ, должно быть", answer)
-    is_human = False
-
-greetings = {
-    "en": "Hello {name} {surname}! Welcome to MGIMO.",
-    "de": "Hallo {name} {surname}! Willkommen am MGIMO.",
-    "fr": "Bonjour {name} {surname}! Bienvenue au MGIMO.",
-    "es": "Hola {name} {surname}! Bienvenido/a a MGIMO.",
-    "it": "Ciao {name} {surname}! Benvenuto al MGIMO!",
-    "zh": "你好，{name}！欢迎来到 MGIMO。",
+HELLO = {
+    "en": "Good afternoon, {who}. The dean's office is back online.",
+    "de": "Guten Tag, {who}. Das Dekanat funktioniert wieder.",
+    "fr": "Bonjour, {who}. Le décanat vous écoute.",
+    "ko": "안녕하세요, {who}. 학사 시스템이 복구되었습니다.",
+    "pt": "Ola, {who}. A secretaria academica voltou a funcionar.",
+    "tr": "Merhaba, {who}. Dekanlik yeniden calisiyor.",
 }
-languages = {
+
+LANG_TITLE = {
     "en": "английский",
     "de": "немецкий",
     "fr": "французский",
-    "es": "испанский",
-    "it": "итальянский",
-    "zh": "китайский",
+    "ko": "корейский",
+    "pt": "португальский",
+    "tr": "турецкий",
 }
 
-lang = input("""
-Какой иностранный язык ты изучаешь?
-Введи двухбуквенный код (en, de, fr, es, it, zh): """).strip().lower()
-if lang not in greetings:
-    print("Такого кода нет, переходим на английский.")
-    lang = "en"
-shown = lang
-print("\nПриветствие:\n")
-print(greetings[shown].format(name=name, surname=surname))
-print()
-detect = input(f"Это был {languages[lang]} язык? (д)а/(н)ет): ").strip().lower()
-language_ok = detect.startswith("д")
-if language_ok:
-    print("Верно определили язык.")
-else:
-    print(f"На самом деле это был {languages[shown]}.")
-
-results = [language_ok]
-print()
-answer = input("Какой язык программирования ты изучаешь? ").strip()
-if answer.lower() in {"python", "питон", "пайтон"}:
-    print("Верно!")
-    results.append(True)
-else:
-    print("На практикуме ожидается Python.")
-    results.append(False)
-print()
-
-terms_dict = {
-    "переменная": "ячейка памяти, в которой хранится значение.",
-    "интерпретатор": "программа, которая выполняет исходный код построчно.",
-    "строка": "текст в кавычках.",
-    "список": "упорядоченная коллекция значений.",
-    "словарь": "структура данных, из которой по ключу получают значение.",
-    "цикл": "повтор блока команд в зависимости от условий.",
-    "комментарий": "текст после #, который не влияет на ход программы.",
-    "функция": "блок кода, который принимает аргументы и возвращает результат.",
-    "международные отношения": "связи между государствами и другими акторами мировой политики.",
-    "дипломатия": "официальная практика переговоров и представительства интересов государства.",
-    "суверенитет": "верховенство власти государства внутри страны и независимость вовне.",
-    "мягкая сила": "влияние через культуру, ценности и привлекательность, а не принуждение.",
-    "хронотоп": "единство художественного времени и пространства в тексте.",
-    "культура": "смысловое пространство, созданное человеком.",
+DIPLOMACY = {
+    "ратификация": "утверждение международного договора высшим органом власти",
+    "верительные грамоты": "документ, которым посол представляется главе государства",
+    "демарш": "официальное дипломатическое выступление с протестом или предупреждением",
+    "экстерриториальность": "особый статус помещений посольства на чужой территории",
+    "агреман": "согласие принять конкретное лицо в качестве посла",
+    "нота": "письменное дипломатическое обращение одного государства к другому",
 }
 
 
-def ask_for_term(terms_dict, term=None, n_options=3):
-    if term is None:
-        term = random.choice(list(terms_dict.keys()))
-    other_terms = [t for t in terms_dict if t != term]
-    k = min(n_options, len(terms_dict)) - 1
-    options = [term] + random.sample(other_terms, k)
-    random.shuffle(options)
-    print(terms_dict[term].capitalize())
-    print("Это определение для термина: ")
-    for i, option in enumerate(options, start=1):
-        print(f"  {i}. {option}")
-    while True:
-        answer = input("Ваш ответ: ")
-        if answer.isdigit() and 1 <= int(answer) <= len(options):
-            break
-        print("Введите номер варианта.")
-    if term == options[int(answer) - 1]:
-        print("Верно!")
+def read_year():
+    raw = input("Год рождения (например 2005): ").strip()
+    now = datetime.date.today().year
+    if not raw:
+        return now - 19
+    return int(raw)
+
+
+def check_human():
+    left = random.randint(3, 9)
+    right = random.randint(3, 9)
+    typed = input(f"Антибот: {left} x {right} = ").strip()
+    expected = left * right
+    if typed == str(expected):
+        print("Проверка пройдена.")
         return True
-    print("Неверно. Правильный ответ:", term)
+    print(f"Мимо. Нужно было {expected}.")
     return False
 
 
-for _ in range(3):
-    results.append(ask_for_term(terms_dict))
+def choose_language(who):
+    print("Коды языков:", ", ".join(HELLO))
+    code = input("Ваш язык (две буквы): ").strip().lower()
+    if code not in HELLO:
+        print("Код не найден, оставляю английский.")
+        code = "en"
+    print(HELLO[code].format(who=who))
+    guess = input(f"Это {LANG_TITLE[code]}? да/нет: ").strip().lower()
+    return code, guess.startswith("д")
 
 
-def get_words(s):
-    parts = re.split(r"(\W+)", s)
-    words = [(i, p) for i, p in enumerate(parts) if p.isalpha() and len(p) > 3]
-    ix, random_word = random.choice(words)
-    return parts[:ix], random_word, parts[ix + 1 :]
+def python_question():
+    answer = input("На каком языке написана эта программа? ").strip().lower()
+    ok = answer in {"python", "питон", "пайтон"}
+    print("Да, это Python." if ok else "Сейчас мы чиним программу на Python.")
+    return ok
 
 
-message = """
-В современном мире государства связаны сетью договоров, организаций и
-информационных потоков; понимание этих связей помогает анализировать
-международные процессы без упрощённых мифов.
-"""
+def diplomacy_round():
+    term = random.choice(list(DIPLOMACY))
+    decoys = random.sample([item for item in DIPLOMACY if item != term], 2)
+    choices = [term, *decoys]
+    random.shuffle(choices)
+    print("\nОпределение:", DIPLOMACY[term])
+    for number, option in enumerate(choices, start=1):
+        print(f"{number}) {option}")
+    picked = input("Номер термина: ").strip()
+    if picked.isdigit() and 1 <= int(picked) <= len(choices) and choices[int(picked) - 1] == term:
+        print("Точно.")
+        return True
+    print("Правильный термин:", term)
+    return False
 
-start, word, end = get_words(message)
-print("".join(start + ["_" * len(word)] + end))
-answer = input("Какое слово пропущено? ")
-if answer.lower() == word.lower():
-    print("Ответ верный")
-    results.append(True)
-else:
-    print(f"Неверно. Правильный ответ: {word}")
-    results.append(False)
 
-print("\n" + "=" * 45)
-print("ИТОГ · МЖ-МИЭП · вариант А")
-print(f"Имя и фамилия: {name} {surname}")
-print(f"Факультет: {faculty}")
-print(f"Год рождения: {birth_year}, возраст: {age}")
-print(f"Иностранный язык: {languages[lang]}")
-total = len(results)
-correct = sum(results)
-print(f"Ответов на вопросы: {total}, из них верно {correct}.")
-print("=" * 45)
+def missing_word():
+    sentence = (
+        "Посол вручает верительные грамоты и после этого может официально "
+        "представлять своё государство в стране пребывания."
+    )
+    words = [word for word in sentence.replace(".", "").split() if len(word) > 5]
+    hidden = random.choice(words)
+    shown = sentence.replace(hidden, "_" * len(hidden), 1)
+    print("\n" + shown)
+    typed = input("Вставьте пропущенное слово: ").strip()
+    if typed.lower() == hidden.lower():
+        print("Слово угадано.")
+        return True
+    print("Было слово:", hidden)
+    return False
 
-bonus = input("Бонус: номер комнаты Цифровой кафедры? ").strip()
-if bonus in {"3053", "Одинцово", "одинцово"}:
-    correct += 1
-    print("+1 балл")
-else:
-    print("Подсказка: dd.mgimo.ru")
-print(f"Итого баллов: {correct}")
+
+def room_bonus():
+    room = input("\nБонус. Кабинет Цифровой кафедры: ").strip()
+    if room in {"3053", "одинцово", "Одинцово"}:
+        print("Бонусный балл есть.")
+        return 1
+    print("Кабинет не тот. Сайт кафедры: dd.mgimo.ru")
+    return 0
+
+
+def main():
+    print("МГИМО / электронный деканат")
+    print("Карточка студента МЖ-МИЭП\n")
+    first = input("Имя: ").strip()
+    last = input("Фамилия: ").strip()
+    print("Факультеты:", " · ".join(FACULTIES))
+    faculty = input("Ваш факультет: ").strip()
+    year = read_year()
+    age = datetime.date.today().year - year
+
+    print(f"\nКарточка: {last} {first}")
+    print(f"Факультет: {faculty}")
+    print(f"Возраст: {age}")
+
+    points = []
+    points.append(check_human())
+    code, language_ok = choose_language(f"{first} {last}")
+    points.append(language_ok)
+    points.append(python_question())
+    points.append(diplomacy_round())
+    points.append(diplomacy_round())
+    points.append(missing_word())
+
+    score = sum(points) + room_bonus()
+    print("\n----- ведомость -----")
+    print(f"{last} {first}, {faculty}, {age} лет")
+    print(f"Язык анкеты: {LANG_TITLE[code]}")
+    print(f"Баллы: {score} из {len(points) + 1}")
+
+
+if __name__ == "__main__":
+    main()
